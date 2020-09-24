@@ -8,7 +8,7 @@ import (
 )
 
 type WithDotImports interface {
-	Method1() Request
+	Method1(string) Request
 	Method2() *bytes.Buffer
 	Method3() Context
 }

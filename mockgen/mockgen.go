@@ -374,6 +374,20 @@ func (g *generator) mockName(typeName string) string {
 
 	return "Mock" + typeName
 }
+func makeRetString(out []*model.Parameter, g *generator, pkgOverride string) string {
+	rets := make([]string, len(out))
+	for i, p := range out {
+		rets[i] = p.Type.String(g.packageMap, pkgOverride)
+	}
+	retString := strings.Join(rets, ", ")
+	if len(rets) > 1 {
+		retString = "(" + retString + ")"
+	}
+	if retString != "" {
+		retString = " " + retString
+	}
+	return retString
+}
 
 func (g *generator) GenerateMockInterface(intf *model.Interface, outputPackagePath string) error {
 	mockType := g.mockName(intf.Name)
@@ -382,12 +396,18 @@ func (g *generator) GenerateMockInterface(intf *model.Interface, outputPackagePa
 	g.p("// %v is a mock of %v interface.", mockType, intf.Name)
 	g.p("type %v struct {", mockType)
 	g.in()
+	for _, method := range intf.Methods {
+		argNames := g.getArgNames(method)
+		argTypes := g.getArgTypes(method, outputPackagePath)
+		argString := makeArgString(argNames, argTypes)
+		retString := makeRetString(method.Out, g, outputPackagePath)
+		g.p("Fn%v func(%v)%v", method.Name, argString, retString)
+	}
 	g.p("ctrl     *gomock.Controller")
 	g.p("recorder *%vMockRecorder", mockType)
 	g.out()
 	g.p("}")
 	g.p("")
-
 	g.p("// %vMockRecorder is the mock recorder for %v.", mockType, mockType)
 	g.p("type %vMockRecorder struct {", mockType)
 	g.in()
@@ -471,7 +491,8 @@ func (g *generator) GenerateMockMethod(mockType string, m *model.Method, pkgOver
 	g.p("// %v mocks base method.", m.Name)
 	g.p("func (%v *%v) %v(%v)%v {", idRecv, mockType, m.Name, argString, retString)
 	g.in()
-	g.p("%s.ctrl.T.Helper()", idRecv)
+	g.p("if %v.Fn%s != nil {", idRecv, m.Name)
+	g.in()
 
 	var callArgs string
 	if m.Variadic == nil {
@@ -491,9 +512,37 @@ func (g *generator) GenerateMockMethod(mockType string, m *model.Method, pkgOver
 		g.p("}")
 		callArgs = ", " + idVarArgs + "..."
 	}
+
+	args := strings.TrimSpace(callArgs)
+
+	if args == "" || args == "," {
+		args = ""
+	}
+
+	if len(args) > 0 && args[0:1] == "," {
+		args = args[1:]
+	}
+
 	if len(m.Out) == 0 {
+		if args == "" {
+			g.p(`%v.Fn%s()`, idRecv, m.Name)
+		} else {
+			g.p(`%v.Fn%s(%s)`, idRecv, m.Name, args)
+		}
+		g.out()
+		g.p("}")
+
+		g.p("%s.ctrl.T.Helper()", idRecv)
 		g.p(`%v.ctrl.Call(%v, %q%v)`, idRecv, idRecv, m.Name, callArgs)
 	} else {
+		if args == "" {
+			g.p(`return %v.Fn%s()`, idRecv, m.Name)
+		} else {
+			g.p(`return %v.Fn%s(%s)`, idRecv, m.Name, args)
+		}
+		g.out()
+		g.p("}")
+		g.p("%s.ctrl.T.Helper()", idRecv)
 		idRet := ia.allocateIdentifier("ret")
 		g.p(`%v := %v.ctrl.Call(%v, %q%v)`, idRet, idRecv, idRecv, m.Name, callArgs)
 
