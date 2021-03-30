@@ -529,6 +529,7 @@ func (g *generator) GenerateMockMethod(mockType string, m *model.Method, pkgOver
 		} else {
 			g.p(`%v.Fn%s(%s)`, idRecv, m.Name, args)
 		}
+		g.p("return")
 		g.out()
 		g.p("}")
 

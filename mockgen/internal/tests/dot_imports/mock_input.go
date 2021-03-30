@@ -22,6 +22,17 @@ type MockWithDotImports struct {
 	recorder  *MockWithDotImportsMockRecorder
 }
 
+// Method1 mocks base method.
+func (m *MockWithDotImports) Method1(arg0 string) Request {
+	if m.FnMethod1 != nil {
+		return m.FnMethod1(arg0)
+	}
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Method1", arg0)
+	ret0, _ := ret[0].(Request)
+	return ret0
+}
+
 // MockWithDotImportsMockRecorder is the mock recorder for MockWithDotImports.
 type MockWithDotImportsMockRecorder struct {
 	mock *MockWithDotImports
@@ -37,17 +48,6 @@ func NewMockWithDotImports(ctrl *gomock.Controller) *MockWithDotImports {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockWithDotImports) EXPECT() *MockWithDotImportsMockRecorder {
 	return m.recorder
-}
-
-// Method1 mocks base method.
-func (m *MockWithDotImports) Method1(arg0 string) Request {
-	if m.FnMethod1 != nil {
-		return m.FnMethod1(arg0)
-	}
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Method1", arg0)
-	ret0, _ := ret[0].(Request)
-	return ret0
 }
 
 // Method1 indicates an expected call of Method1.
