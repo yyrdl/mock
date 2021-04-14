@@ -491,19 +491,20 @@ func (g *generator) GenerateMockMethod(mockType string, m *model.Method, pkgOver
 	g.p("// %v mocks base method.", m.Name)
 	g.p("func (%v *%v) %v(%v)%v {", idRecv, mockType, m.Name, argString, retString)
 	g.in()
-	g.p("if %v.Fn%s != nil {", idRecv, m.Name)
-	g.in()
 
 	var callArgs string
+	var args string
 	if m.Variadic == nil {
 		if len(argNames) > 0 {
 			callArgs = ", " + strings.Join(argNames, ", ")
 		}
+		args = strings.TrimSpace(callArgs)
 	} else {
 		// Non-trivial. The generated code must build a []interface{},
 		// but the variadic argument may be any type.
 		idVarArgs := ia.allocateIdentifier("varargs")
 		idVArg := ia.allocateIdentifier("a")
+		args = strings.Join(argNames[:len(argNames)-1], ", ") + "," + argNames[len(argNames)-1] + "..."
 		g.p("%s := []interface{}{%s}", idVarArgs, strings.Join(argNames[:len(argNames)-1], ", "))
 		g.p("for _, %s := range %s {", idVArg, argNames[len(argNames)-1])
 		g.in()
@@ -513,8 +514,6 @@ func (g *generator) GenerateMockMethod(mockType string, m *model.Method, pkgOver
 		callArgs = ", " + idVarArgs + "..."
 	}
 
-	args := strings.TrimSpace(callArgs)
-
 	if args == "" || args == "," {
 		args = ""
 	}
@@ -522,6 +521,9 @@ func (g *generator) GenerateMockMethod(mockType string, m *model.Method, pkgOver
 	if len(args) > 0 && args[0:1] == "," {
 		args = args[1:]
 	}
+
+	g.p("if %v.Fn%s != nil {", idRecv, m.Name)
+	g.in()
 
 	if len(m.Out) == 0 {
 		if args == "" {
